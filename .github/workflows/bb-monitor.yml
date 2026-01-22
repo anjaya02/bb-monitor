@@ -1,7 +1,8 @@
 name: UoW Blackboard 24/7
+
 on:
   schedule:
-    - cron: "*/5 * * * *" # Every 5 minutes (unlimited for public repos)
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,13 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Decode session from secret
       - name: Create Session File
         run: |
           echo '${{ secrets.SESSION_STORAGE }}' > session_storage.json
           echo "✅ Session file created from secret"
 
-      # Restore seen_posts.json and health check from cache
       - name: Restore History Cache
         uses: actions/cache@v4
         with:
@@ -27,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install Dependencies
         run: |
@@ -39,9 +38,6 @@ jobs:
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: python monitor.py
-
-      # Cache is automatically saved at the end of the job
-      # No need for explicit upload step
 
       - name: Upload Error Screenshot
         if: always()
