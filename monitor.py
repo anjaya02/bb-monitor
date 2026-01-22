@@ -3,13 +3,17 @@ import sys
 import json
 import hashlib
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from playwright.sync_api import sync_playwright
 
 # Config
 DB_FILE = 'seen_posts.json'
 HEALTH_CHECK_FILE = 'last_health_check.txt'
 STORAGE_FILE = 'session_storage.json'
+HEALTH_CHECK_INTERVAL_HOURS = 12  # Send health check every 12 hours (2/day)
+
+# IST timezone (UTC+5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
 
 def send_telegram(message):
     """Send a message to Telegram. Returns True if successful."""
@@ -17,6 +21,23 @@ def send_telegram(message):
     payload = {"chat_id": os.getenv('TG_CHAT_ID'), "text": message, "parse_mode": "Markdown"}
     response = requests.post(url, json=payload)
     return response.ok
+
+def is_health_check_due():
+    """Check if enough time has passed since last health check (12 hours)."""
+    if not os.path.exists(HEALTH_CHECK_FILE):
+        return True
+    try:
+        with open(HEALTH_CHECK_FILE, 'r') as f:
+            last_check = datetime.fromisoformat(f.read().strip())
+        hours_since = (datetime.now(timezone.utc) - last_check).total_seconds() / 3600
+        return hours_since >= HEALTH_CHECK_INTERVAL_HOURS
+    except:
+        return True
+
+def update_health_check_time():
+    """Record the current time as the last health check."""
+    with open(HEALTH_CHECK_FILE, 'w') as f:
+        f.write(datetime.now(timezone.utc).isoformat())
 
 def test_telegram():
     """Send a test message to verify Telegram bot is working."""
@@ -125,16 +146,21 @@ def run():
                     
                     if post_id not in seen_ids:
                         title = content.splitlines()[0]
-                        send_telegram(f"📢 *New UoW Post:*\n{title}")
+                        now_ist = datetime.now(IST)
+                        send_telegram(f"📢 *New UoW Post*\n\n{title}\n\n🕐 {now_ist.strftime('%d %b %Y, %I:%M %p IST')}")
                         seen_ids.append(post_id)
                         new_seen_count += 1
                 
                 print(f"Checked {len(items)} items, found {new_seen_count} new posts.")
                 
-                # Health check - send on every run
-                now = datetime.now(timezone.utc)
-                send_telegram(f"💚 *BB Monitor Health Check*\n\n✅ Bot is running normally\n📊 Tracking {len(seen_ids)} posts\n🆕 {new_seen_count} new posts this run\n🕐 {now.strftime('%Y-%m-%d %H:%M UTC')}")
-                print("Sent health check")
+                # Health check - send only every 12 hours (2/day)
+                if is_health_check_due():
+                    now_ist = datetime.now(IST)
+                    send_telegram(f"💚 *BB Monitor Health Check*\n\n✅ Bot is running normally\n📊 Tracking {len(seen_ids)} posts\n🕐 {now_ist.strftime('%d %b %Y, %I:%M %p IST')}")
+                    update_health_check_time()
+                    print("Sent health check (12-hour interval)")
+                else:
+                    print("Health check not due yet (sent within last 12 hours)")
                 
             except Exception as e:
                 error_msg = str(e)
