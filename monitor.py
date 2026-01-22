@@ -3,7 +3,7 @@ import sys
 import json
 import hashlib
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from playwright.sync_api import sync_playwright
 
 # Config
@@ -131,20 +131,10 @@ def run():
                 
                 print(f"Checked {len(items)} items, found {new_seen_count} new posts.")
                 
-                # Daily health check - send once per day at 8 AM
-                now = datetime.utcnow()
-                today_str = now.strftime('%Y-%m-%d')
-                last_check = ''
-                if os.path.exists(HEALTH_CHECK_FILE):
-                    with open(HEALTH_CHECK_FILE, 'r') as f:
-                        last_check = f.read().strip()
-                
-                # Send health check between 8:00-8:10 AM UTC (1:30-1:40 PM IST)
-                if now.hour == 8 and last_check != today_str:
-                    send_telegram(f"💚 *BB Monitor Health Check*\n\n✅ Bot is running normally\n📊 Tracking {len(seen_ids)} posts\n🕐 {now.strftime('%Y-%m-%d %H:%M UTC')}")
-                    with open(HEALTH_CHECK_FILE, 'w') as f:
-                        f.write(today_str)
-                    print("Sent daily health check")
+                # Health check - send on every run
+                now = datetime.now(timezone.utc)
+                send_telegram(f"💚 *BB Monitor Health Check*\n\n✅ Bot is running normally\n📊 Tracking {len(seen_ids)} posts\n🆕 {new_seen_count} new posts this run\n🕐 {now.strftime('%Y-%m-%d %H:%M UTC')}")
+                print("Sent health check")
                 
             except Exception as e:
                 error_msg = str(e)
