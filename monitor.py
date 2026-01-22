@@ -44,18 +44,30 @@ def run():
             page = context.new_page()
             
             try:
-                page.goto('https://learning.westminster.ac.uk/ultra/stream', timeout=60000)
+                print("Navigating to Blackboard...")
+                page.goto('https://learning.westminster.ac.uk/ultra/stream', timeout=90000, wait_until='networkidle')
+                
+                # Wait a bit for any JS to settle
+                page.wait_for_timeout(3000)
                 
                 # Check if we landed on login page (session expired)
                 current_url = page.url
-                if 'login' in current_url.lower() or 'auth' in current_url.lower():
+                print(f"Current URL: {current_url}")
+                
+                if 'login' in current_url.lower() or 'auth' in current_url.lower() or 'microsoftonline' in current_url.lower():
                     send_telegram("⚠️ *BB Monitor Alert*\n\n🔐 Your Blackboard session has *expired*!\n\nPlease refresh your session:\n1. Run `get_session.py` locally\n2. Push new `user_data.zip` to GitHub")
                     print("Session expired - login page detected")
                     raise Exception("Session expired - redirected to login page")
                 
-                page.wait_for_selector('.activity-stream', timeout=30000)
+                # Try to find the activity stream with increased timeout
+                print("Waiting for activity stream...")
+                page.wait_for_selector('.activity-stream', timeout=60000)
+                
+                # Additional wait for stream items to load
+                page.wait_for_timeout(2000)
                 
                 items = page.query_selector_all('.stream-item')
+                print(f"Found {len(items)} stream items")
                 new_seen_count = 0
                 
                 for item in items[:10]:  # Check top 10 recent items
@@ -75,9 +87,16 @@ def run():
                 error_msg = str(e)
                 print(f"Browser error: {error_msg}")
                 
-                # Send alert for timeout errors (likely session issue)
-                if 'timeout' in error_msg.lower() or 'activity-stream' in error_msg.lower():
-                    send_telegram("⚠️ *BB Monitor Alert*\n\n❌ Failed to load Activity Stream!\n\nThis usually means your session expired.\n\nPlease refresh your session:\n1. Run `get_session.py` locally\n2. Push new `user_data.zip` to GitHub")
+                # Save screenshot for debugging
+                try:
+                    page.screenshot(path='error_screenshot.png')
+                    print("Saved error screenshot to error_screenshot.png")
+                except:
+                    pass
+                
+                # Only send alert for genuine session/loading issues
+                if 'timeout' in error_msg.lower() and 'activity-stream' in error_msg.lower():
+                    send_telegram("⚠️ *BB Monitor Alert*\n\n❌ Failed to load Activity Stream (timeout).\n\nPossible causes:\n• Session expired\n• Blackboard is slow/down\n\nIf this persists, refresh your session.")
             finally:
                 context.close()
                 
