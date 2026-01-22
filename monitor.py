@@ -1,4 +1,5 @@
 import os
+import sys
 import zipfile
 import requests
 import json
@@ -9,9 +10,20 @@ from playwright.sync_api import sync_playwright
 DB_FILE = 'seen_posts.json'
 
 def send_telegram(message):
+    """Send a message to Telegram. Returns True if successful."""
     url = f"https://api.telegram.org/bot{os.getenv('TG_TOKEN')}/sendMessage"
     payload = {"chat_id": os.getenv('TG_CHAT_ID'), "text": message, "parse_mode": "Markdown"}
-    requests.post(url, json=payload)
+    response = requests.post(url, json=payload)
+    return response.ok
+
+def test_telegram():
+    """Send a test message to verify Telegram bot is working."""
+    print("Testing Telegram connection...")
+    if send_telegram("✅ *BB Monitor Test*\nYour Telegram bot is working correctly!"):
+        print("✅ Test message sent successfully! Check your Telegram.")
+    else:
+        print("❌ Failed to send test message. Check your TG_TOKEN and TG_CHAT_ID.")
+
 
 def run():
     # 1. Load seen posts history FIRST (before anything can fail)
@@ -65,4 +77,7 @@ def run():
         print(f"Successfully updated {DB_FILE} with {len(seen_ids)} IDs.")
 
 if __name__ == "__main__":
-    run()
+    if len(sys.argv) > 1 and sys.argv[1] == "--test":
+        test_telegram()
+    else:
+        run()
