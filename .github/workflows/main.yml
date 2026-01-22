@@ -1,7 +1,7 @@
 name: UoW Blackboard 24/7
 on:
   schedule:
-    - cron: '*/5 * * * *'   # Every 5 minutes
+    - cron: '*/30 * * * *'   # Every 30 minutes (stays within free tier)
   workflow_dispatch:
 
 jobs:
