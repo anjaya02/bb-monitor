@@ -45,26 +45,48 @@ def run():
             
             try:
                 print("Navigating to Blackboard...")
-                page.goto('https://learning.westminster.ac.uk/ultra/stream', timeout=90000, wait_until='networkidle')
+                page.goto('https://learning.westminster.ac.uk/ultra/stream', timeout=90000, wait_until='domcontentloaded')
                 
-                # Wait a bit for any JS to settle
-                page.wait_for_timeout(3000)
+                # Wait for initial page load
+                page.wait_for_timeout(5000)
+                current_url = page.url
+                print(f"Initial URL: {current_url}")
+                
+                # Handle redirect state (page shows ?new_loc= but hasn't navigated yet)
+                max_retries = 3
+                for i in range(max_retries):
+                    current_url = page.url
+                    if 'new_loc=' in current_url or current_url == 'https://learning.westminster.ac.uk/':
+                        print(f"Redirect state detected, waiting... (attempt {i+1}/{max_retries})")
+                        page.wait_for_timeout(10000)  # Wait 10 seconds for redirect
+                        # Try clicking the page body to trigger any pending navigation
+                        try:
+                            page.click('body', timeout=2000)
+                        except:
+                            pass
+                    else:
+                        break
+                
+                current_url = page.url
+                print(f"Final URL: {current_url}")
                 
                 # Check if we landed on login page (session expired)
-                current_url = page.url
-                print(f"Current URL: {current_url}")
-                
                 if 'login' in current_url.lower() or 'auth' in current_url.lower() or 'microsoftonline' in current_url.lower():
                     send_telegram("⚠️ *BB Monitor Alert*\n\n🔐 Your Blackboard session has *expired*!\n\nPlease refresh your session:\n1. Run `get_session.py` locally\n2. Push new `user_data.zip` to GitHub")
                     print("Session expired - login page detected")
                     raise Exception("Session expired - redirected to login page")
+                
+                # Check if still stuck on redirect page
+                if 'new_loc=' in current_url:
+                    print("Still stuck on redirect page - may need fresh session")
+                    raise Exception("Page stuck on redirect - session may be invalid")
                 
                 # Try to find the activity stream with increased timeout
                 print("Waiting for activity stream...")
                 page.wait_for_selector('.activity-stream', timeout=60000)
                 
                 # Additional wait for stream items to load
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(3000)
                 
                 items = page.query_selector_all('.stream-item')
                 print(f"Found {len(items)} stream items")
