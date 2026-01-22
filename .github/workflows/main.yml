@@ -22,10 +22,7 @@ jobs:
         with:
           path: |
             seen_posts.json
-            last_health_check.txt
-          key: bb-monitor-${{ github.run_id }}
-          restore-keys: |
-            bb-monitor-
+          key: bb-monitor-state
 
       - name: Set up Python
         uses: actions/setup-python@v4
