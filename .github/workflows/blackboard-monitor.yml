@@ -21,6 +21,8 @@ jobs:
         with:
           path: |
             seen_posts.json
+            last_health_check.txt
+            posts_since_health_check.txt
           key: bb-monitor-state
 
       - name: Set up Python
