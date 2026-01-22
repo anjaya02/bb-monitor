@@ -1,7 +1,7 @@
 name: UoW Blackboard 24/7
 on:
   schedule:
-    - cron: '*/30 * * * *'   # Every 30 minutes (stays within free tier)
+    - cron: "*/30 * * * *" # Every 30 minutes (stays within free tier)
   workflow_dispatch:
 
 jobs:
@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       # Restore seen_posts.json and health check from cache
       - name: Restore History Cache
         uses: actions/cache@v4
@@ -24,13 +24,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-          
+          python-version: "3.11"
+
       - name: Install Dependencies
         run: |
           pip install playwright requests
           playwright install chromium --with-deps
-          
+
       - name: Run Script
         env:
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
@@ -39,7 +39,7 @@ jobs:
 
       # Cache is automatically saved at the end of the job
       # No need for explicit upload step
-          
+
       - name: Upload Error Screenshot
         if: always()
         uses: actions/upload-artifact@v4
