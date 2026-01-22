@@ -50,7 +50,7 @@ def run():
                 page.goto('https://learning.westminster.ac.uk/ultra/stream', timeout=90000, wait_until='domcontentloaded')
                 
                 # Wait for initial page load
-                page.wait_for_timeout(5000)
+                page.wait_for_timeout(8000)
                 current_url = page.url
                 print(f"Initial URL: {current_url}")
                 
@@ -58,14 +58,30 @@ def run():
                 max_retries = 3
                 for i in range(max_retries):
                     current_url = page.url
-                    if 'new_loc=' in current_url or current_url == 'https://learning.westminster.ac.uk/':
+                    if 'new_loc=' in current_url:
                         print(f"Redirect state detected, waiting... (attempt {i+1}/{max_retries})")
-                        page.wait_for_timeout(10000)  # Wait 10 seconds for redirect
-                        # Try clicking the page body to trigger any pending navigation
+                        page.wait_for_timeout(15000)  # Wait 15 seconds for redirect
+                        
+                        # Try to manually trigger the redirect
                         try:
-                            page.click('body', timeout=2000)
-                        except:
-                            pass
+                            # Extract the target URL from new_loc parameter
+                            import urllib.parse
+                            parsed = urllib.parse.urlparse(current_url)
+                            params = urllib.parse.parse_qs(parsed.query)
+                            if 'new_loc' in params:
+                                target_path = params['new_loc'][0]
+                                target_url = f"https://learning.westminster.ac.uk{target_path}"
+                                print(f"Manually navigating to: {target_url}")
+                                page.goto(target_url, timeout=30000, wait_until='domcontentloaded')
+                                page.wait_for_timeout(5000)
+                                break
+                        except Exception as e:
+                            print(f"Manual navigation failed: {e}")
+                            # Try clicking the page body to trigger any pending navigation
+                            try:
+                                page.click('body', timeout=2000)
+                            except:
+                                pass
                     else:
                         break
                 
@@ -78,10 +94,11 @@ def run():
                     print("Session expired - login page detected")
                     raise Exception("Session expired - redirected to login page")
                 
-                # Check if still stuck on redirect page
+                # Check if still stuck on redirect page - treat as session expiration
                 if 'new_loc=' in current_url:
-                    print("Still stuck on redirect page - may need fresh session")
-                    raise Exception("Page stuck on redirect - session may be invalid")
+                    send_telegram("⚠️ *BB Monitor Alert*\n\n🔐 Session stuck on redirect page - likely *expired*!\n\nPlease refresh your session:\n1. Run `get_session.py` locally\n2. Zip the `user_data/` folder\n3. Push new `user_data.zip` to GitHub")
+                    print("Still stuck on redirect page - session needs refresh")
+                    raise Exception("Page stuck on redirect - session expired")
                 
                 # Try to find the activity stream with increased timeout
                 print("Waiting for activity stream...")
