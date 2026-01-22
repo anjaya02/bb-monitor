@@ -10,12 +10,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Download Seen History
-        uses: actions/download-artifact@v4
+      # Restore seen_posts.json from cache (persists across runs)
+      - name: Restore Seen History Cache
+        uses: actions/cache@v4
         with:
-          name: seen-history
-          path: .
-        continue-on-error: true # First run won't have this file
+          path: seen_posts.json
+          key: seen-history-${{ github.run_id }}
+          restore-keys: |
+            seen-history-
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -33,12 +35,8 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: python monitor.py
 
-      - name: Save Seen History
-        uses: actions/upload-artifact@v4
-        with:
-          name: seen-history
-          path: seen_posts.json
-          retention-days: 7
+      # Cache is automatically saved at the end of the job
+      # No need for explicit upload step
           
       - name: Upload Error Screenshot
         if: always()
