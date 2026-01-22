@@ -47,7 +47,7 @@ def run():
                 page.goto('https://learning.westminster.ac.uk/ultra/stream', timeout=60000)
                 page.wait_for_selector('.activity-stream', timeout=30000)
                 
-                items = page.query_selector_all('.activity-item')
+                items = page.query_selector_all('.stream-item')
                 new_seen_count = 0
                 
                 for item in items[:10]:  # Check top 10 recent items
