@@ -156,7 +156,7 @@ def run():
                 # Health check - send only every 12 hours (2/day)
                 if is_health_check_due():
                     now_ist = datetime.now(IST)
-                    send_telegram(f"💚 *BB Monitor Health Check*\n\n✅ Bot is running normally\n📊 Tracking {len(seen_ids)} posts\n🕐 {now_ist.strftime('%d %b %Y, %I:%M %p IST')}")
+                    send_telegram(f"💚 *BB Monitor Health Check*\n\n✅ Bot is running normally\n📊 Tracking {len(seen_ids)} posts\n🆕 {new_seen_count} new posts this run\n🕐 {now_ist.strftime('%d %b %Y, %I:%M %p IST')}")
                     update_health_check_time()
                     print("Sent health check (12-hour interval)")
                 else:
