@@ -9,6 +9,7 @@ from playwright.sync_api import sync_playwright
 # Config
 DB_FILE = 'seen_posts.json'
 HEALTH_CHECK_FILE = 'last_health_check.txt'
+POSTS_COUNTER_FILE = 'posts_since_health_check.txt'  # Tracks new posts between health checks
 STORAGE_FILE = 'session_storage.json'
 HEALTH_CHECK_INTERVAL_HOURS = 12  # Send health check every 12 hours (2/day)
 
@@ -38,6 +39,27 @@ def update_health_check_time():
     """Record the current time as the last health check."""
     with open(HEALTH_CHECK_FILE, 'w') as f:
         f.write(datetime.now(timezone.utc).isoformat())
+
+def get_posts_since_health_check():
+    """Get the count of new posts since last health check."""
+    if not os.path.exists(POSTS_COUNTER_FILE):
+        return 0
+    try:
+        with open(POSTS_COUNTER_FILE, 'r') as f:
+            return int(f.read().strip())
+    except:
+        return 0
+
+def increment_posts_counter(count=1):
+    """Add to the cumulative post count."""
+    current = get_posts_since_health_check()
+    with open(POSTS_COUNTER_FILE, 'w') as f:
+        f.write(str(current + count))
+
+def reset_posts_counter():
+    """Reset counter after sending health check."""
+    with open(POSTS_COUNTER_FILE, 'w') as f:
+        f.write('0')
 
 def test_telegram():
     """Send a test message to verify Telegram bot is working."""
@@ -151,13 +173,19 @@ def run():
                         seen_ids.append(post_id)
                         new_seen_count += 1
                 
+                # Update cumulative counter for health check
+                if new_seen_count > 0:
+                    increment_posts_counter(new_seen_count)
+                
                 print(f"Checked {len(items)} items, found {new_seen_count} new posts.")
                 
                 # Health check - send only every 12 hours (2/day)
                 if is_health_check_due():
                     now_ist = datetime.now(IST)
-                    send_telegram(f"💚 *BB Monitor Health Check*\n\n✅ Bot is running normally\n📊 Tracking {len(seen_ids)} posts\n🆕 {new_seen_count} new posts this run\n🕐 {now_ist.strftime('%d %b %Y, %I:%M %p IST')}")
+                    posts_in_period = get_posts_since_health_check()
+                    send_telegram(f"💚 *BB Monitor Health Check*\n\n✅ Bot is running normally\n📊 Tracking {len(seen_ids)} posts\n🆕 {posts_in_period} new posts in last 12 hours\n🕐 {now_ist.strftime('%d %b %Y, %I:%M %p IST')}")
                     update_health_check_time()
+                    reset_posts_counter()  # Reset for next 12-hour period
                     print("Sent health check (12-hour interval)")
                 else:
                     print("Health check not due yet (sent within last 12 hours)")
