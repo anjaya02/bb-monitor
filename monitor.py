@@ -1,15 +1,15 @@
 import os
 import sys
-import zipfile
-import requests
 import json
 import hashlib
+import requests
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 # Config
 DB_FILE = 'seen_posts.json'
 HEALTH_CHECK_FILE = 'last_health_check.txt'
+STORAGE_FILE = 'session_storage.json'
 
 def send_telegram(message):
     """Send a message to Telegram. Returns True if successful."""
@@ -36,13 +36,20 @@ def run():
         seen_ids = []
     
     try:
-        # 2. Unzip session
-        if os.path.exists('user_data.zip'):
-            with zipfile.ZipFile('user_data.zip', 'r') as zip_ref:
-                zip_ref.extractall('user_data')
+        # Check for session storage file
+        if not os.path.exists(STORAGE_FILE):
+            send_telegram("⚠️ *BB Monitor Alert*\n\n❌ No session file found!\n\nPlease run `get_session.py` locally and push `session_storage.json` to GitHub.")
+            print("No session_storage.json file found")
+            return
 
         with sync_playwright() as p:
-            context = p.chromium.launch_persistent_context('user_data', headless=True)
+            browser = p.chromium.launch(headless=True)
+            
+            # Load the portable session state
+            with open(STORAGE_FILE, 'r') as f:
+                storage_state = json.load(f)
+            
+            context = browser.new_context(storage_state=storage_state)
             page = context.new_page()
             
             try:
@@ -90,13 +97,13 @@ def run():
                 
                 # Check if we landed on login page (session expired)
                 if 'login' in current_url.lower() or 'auth' in current_url.lower() or 'microsoftonline' in current_url.lower():
-                    send_telegram("⚠️ *BB Monitor Alert*\n\n🔐 Your Blackboard session has *expired*!\n\nPlease refresh your session:\n1. Run `get_session.py` locally\n2. Push new `user_data.zip` to GitHub")
+                    send_telegram("⚠️ *BB Monitor Alert*\n\n🔐 Your Blackboard session has *expired*!\n\nPlease refresh your session:\n1. Run `get_session.py` locally\n2. Push new `session_storage.json` to GitHub")
                     print("Session expired - login page detected")
                     raise Exception("Session expired - redirected to login page")
                 
                 # Check if still stuck on redirect page - treat as session expiration
                 if 'new_loc=' in current_url:
-                    send_telegram("⚠️ *BB Monitor Alert*\n\n🔐 Session stuck on redirect page - likely *expired*!\n\nPlease refresh your session:\n1. Run `get_session.py` locally\n2. Zip the `user_data/` folder\n3. Push new `user_data.zip` to GitHub")
+                    send_telegram("⚠️ *BB Monitor Alert*\n\n🔐 Session stuck on redirect page - likely *expired*!\n\nPlease refresh your session:\n1. Run `get_session.py` locally\n2. Push new `session_storage.json` to GitHub")
                     print("Still stuck on redirect page - session needs refresh")
                     raise Exception("Page stuck on redirect - session expired")
                 
@@ -155,6 +162,7 @@ def run():
                     send_telegram("⚠️ *BB Monitor Alert*\n\n❌ Failed to load Activity Stream (timeout).\n\nPossible causes:\n• Session expired\n• Blackboard is slow/down\n\nIf this persists, refresh your session.")
             finally:
                 context.close()
+                browser.close()
                 
     except Exception as e:
         print(f"Setup error: {e}")
