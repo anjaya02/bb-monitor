@@ -1,7 +1,7 @@
 name: UoW Blackboard 24/7
 on:
   schedule:
-    - cron: "*/30 * * * *" # Every 30 minutes (stays within free tier)
+    - cron: "*/5 * * * *" # Every 5 minutes (unlimited for public repos)
   workflow_dispatch:
 
 jobs:
@@ -9,6 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Decode session from secret
+      - name: Create Session File
+        run: |
+          echo '${{ secrets.SESSION_STORAGE }}' > session_storage.json
+          echo "✅ Session file created from secret"
 
       # Restore seen_posts.json and health check from cache
       - name: Restore History Cache

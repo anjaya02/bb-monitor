@@ -1,6 +1,9 @@
 # Browser user data (local cache only)
 user_data/
 
+# Session file (stored as GitHub Secret instead)
+session_storage.json
+
 # Error screenshots
 error_screenshot.png
 

@@ -24,7 +24,16 @@ def save_session():
             json.dump(storage, f, indent=2)
         
         print(f"✅ Session saved to {STORAGE_FILE}")
-        print("Now commit and push this file to GitHub!")
+        print("\n" + "="*60)
+        print("🔐 NEXT STEPS - Add to GitHub Secrets:")
+        print("="*60)
+        print("1. Go to: https://github.com/anjaya02/bb-monitor/settings/secrets/actions")
+        print("2. Click 'New repository secret'")
+        print("3. Name: SESSION_STORAGE")
+        print(f"4. Value: Copy the ENTIRE content of {STORAGE_FILE}")
+        print("5. Click 'Add secret'")
+        print("\nThen you can make the repo public safely!")
+        print("="*60)
         
         context.close()
         browser.close()
