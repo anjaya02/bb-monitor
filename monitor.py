@@ -48,14 +48,17 @@ def run():
                     seen_ids.append(post_id)
                     new_seen_count += 1
             
-            # Save updated history (keep only last 50 to save space)
-            with open(DB_FILE, 'w') as f:
-                json.dump(seen_ids[-50:], f)
-                
         except Exception as e:
             print(f"Error: {e}")
         finally:
             context.close()
+            
+            # ALWAYS save the seen_ids, even if no new posts were found or an error occurred
+            # This ensures GitHub Actions has a file to upload
+            with open(DB_FILE, 'w') as f:
+                json.dump(seen_ids[-50:], f)
+            
+            print(f"Successfully updated {DB_FILE} with {len(seen_ids)} IDs.")
 
 if __name__ == "__main__":
     run()
