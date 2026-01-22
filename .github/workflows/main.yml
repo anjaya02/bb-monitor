@@ -1,7 +1,7 @@
 name: UoW Blackboard 24/7
 on:
   schedule:
-    - cron: '*/10 * * * *' 
+    - cron: '*/5 * * * *'   # Every 5 minutes
   workflow_dispatch:
 
 jobs:
@@ -10,14 +10,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # Restore seen_posts.json from cache (persists across runs)
-      - name: Restore Seen History Cache
+      # Restore seen_posts.json and health check from cache
+      - name: Restore History Cache
         uses: actions/cache@v4
         with:
-          path: seen_posts.json
-          key: seen-history-${{ github.run_id }}
+          path: |
+            seen_posts.json
+            last_health_check.txt
+          key: bb-monitor-${{ github.run_id }}
           restore-keys: |
-            seen-history-
+            bb-monitor-
 
       - name: Set up Python
         uses: actions/setup-python@v4
